@@ -1,0 +1,50 @@
+---
+title: "EDA"
+format: html
+editor: visual
+---
+
+## Introduction
+
+Diabetes is a chronic disease affecting more than [10% of adults worldwide](https://ncdalliance.org/explore-ncds/ncds/diabetes?gad_source=1&gad_campaignid=17280909267&gbraid=0AAAAAoah2CWm1l8zrTC4K7w5H-ix2lvGe&gclid=Cj0KCQiAubrJBhCbARIsAHIdxD_rD15vBLNvnICmcPUJjveVxXD0WRGPyxEgODxFc3z4YYAT00jRoFUaAleZEALw_wcB).It is characterized by the body’s inability to produce or properly use insulin, a hormone that regulates blood sugar. Diabetes is a lifelong condition that often leaves a person reliant on external insulin sources or other glucose-lowering treatments, and it can predispose individuals to worse health outcomes. As with most chronic diseases, early diagnosis and prevention are vital to reducing health risks.
+
+The [dataset](https://www.kaggle.com/datasets/alexteboul/diabetes-health-indicators-dataset/data) used here is a cleaned version of the CDC’s Behavioral Risk Factor Surveillance System (BRFSS) survey. As the name suggests, it collects information on health-related risk factors, such as age, prior health conditions, BMI, and behaviors like smoking and drinking, along with whether a respondent has diabetes or prediabetes. We can use this information to explore correlations between these factors and diabetes status and to build predictive models for identifying people at increased risk.
+
+*Note: There are multiple types of diabetes, but the BRFSS data does not distinguish among them. The only form of diabetes that is preventable through behavioral or lifestyle changes is Type II diabetes. Prediabetes is also specifically associated with Type II diabetes. Therefore, this dataset is most relevant to studying Type II diabetes, which accounts for roughly 90% of all diabetes cases. Depending on what we observe in the EDA, we may choose to remove outliers who likely have another form of diabetes, since those cases would not be influenced by the behavioral risk factors included in this dataset.*
+
+## Loading Data
+
+Libraries
+```{r message=FALSE}
+library(tidyverse)
+```
+
+Importing Data from Local Drive
+```{r}
+df <- read_csv("data/diabetes_binary_health_indicators_BRFSS2015.csv")
+```
+Checking missingness from dataset
+```{r}
+colSums(is.na(df))
+```
+
+Changing all categorical variables to factors
+```{r}
+df <- df |>
+  select(-BMI) |>
+  mutate(across(everything(), as.factor))
+```
+
+## Data Exploration
+
+
+
+
+
+
+
+
+
+
+
+[Click here for the Modeling Page](Modeling.html)
