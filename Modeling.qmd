@@ -189,7 +189,13 @@ final_rf_log_loss <- rf_final_fit |>
 ```
 
 ```{r}
-save(tree_fits, tree_final_fit, tree_final_wf, file="savedtree.RData")
-save(rf_fits, rf_final_fit, rf_final_wf, file="savedrf.RData")
+save(tree_final_fit, tree_final_wf, file="savedtree.RData")
+save(rf_final_fit, rf_final_wf, file="savedrf.RData")
+```
+
+```{r}
+rf_final_fit %>% 
+  extract_fit_parsnip() %>% 
+  vip(num_features = 22)
 ```
 
