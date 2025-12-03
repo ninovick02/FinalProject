@@ -106,7 +106,7 @@ recipe <- recipe(Diabetes_binary ~ ., data = train_data)
 
 
 ```{r}
-tree_mod <- decision_tree(tree_depth = tune(), cost_complexity = tune(), min_n = 200) |>
+tree_mod <- decision_tree(tree_depth = tune(), cost_complexity = tune(), min_n = tune) |>
   set_engine("rpart") |>
   set_mode("classification")
 
@@ -116,7 +116,9 @@ tree_wf <- workflow() |>
 ```
 
 ```{r}
-tree_grid <- grid_regular(cost_complexity(), tree_depth(), levels = c(5, 5))
+tree_grid <- grid_regular(cost_complexity(), tree_depth(), levels = c(5, 5),
+                          conrol = control_grid(save_pred = TRUE),
+                          metrics = metric_set("ms_log_loss"))
 ```
 
 ```{r}
