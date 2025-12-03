@@ -10,7 +10,7 @@ library(tidyverse)
 ```
 
 ```{r}
-df <- read_csv("data/diabetes_binary_health_indicators_BRFSS2015.csv")|>
+df <- read_csv("Data/diabetes_binary_health_indicators_BRFSS2015.csv")|>
   mutate(across(-c(BMI, GenHlth, MentHlth, PhysHlth, Sex, Age, Education, Income),
                 ~factor(.x, levels = c(0, 1), labels = c("No", "Yes")))) |>
   mutate(GenHlth = ordered(GenHlth, levels = c(1, 2, 3, 4, 5), label=c("excellent", "very good", "good", "fair", "poor"))) |>
@@ -136,10 +136,22 @@ tree_final_fit <- tree_final_wf |>
 ```
 
 ```{r}
+# Calculate mn_log_loss manually
+library(yardstick)
+final_tree_log_loss <- tree_final_fit |>
+  collect_predictions() |>
+  mn_log_loss(
+    truth = Diabetes_binary,
+    .pred_Yes # Explicitly list the columns
+  )
+```
+
+
+```{r}
 cores <- parallel::detectCores()
 rf_mod <- 
   rand_forest(mtry = tune(), min_n = tune(), trees = 500) %>% 
-  set_engine("ranger", num.threads = cores) %>% 
+  set_engine("ranger", num.threads = cores, importance = "impurity") %>% 
   set_mode("classification")
 
 rf_wf <- workflow() |>
@@ -149,7 +161,7 @@ rf_wf <- workflow() |>
 
 ```{r}
 rf_fits <- 
-  rf_workflow |>
+  rf_wf |>
   tune_grid(resample = cv_folds,
             grid = 15,
             control = control_grid(save_pred = TRUE),
@@ -168,7 +180,15 @@ rf_final_fit <- rf_final_wf |>
 ```
 
 ```{r}
-print("this is so that I can run chunks above!!")
+final_rf_log_loss <- rf_final_fit |>
+  collect_predictions() |>
+  mn_log_loss(
+    truth = Diabetes_binary,
+    .pred_Yes # Explicitly list the columns
+  )
 ```
 
-12345
+```{r}
+#save(tree_fits, tree_final_fit, tree_final_wf, rf_fits, rf_final_fit, rf_final_wf, file="savedfits.RData")
+```
+
