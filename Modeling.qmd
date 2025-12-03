@@ -122,7 +122,7 @@ tree_grid <- grid_regular(cost_complexity(), tree_depth(), min_n(), levels = c(5
 ```{r}
 tree_fits <- tree_wf |>
   tune_grid(resamples = cv_folds, grid = tree_grid,
-                          conrol = control_grid(save_pred = TRUE),
+                          control = control_grid(save_pred = TRUE),
                           metrics = metric_set(mn_log_loss))
 ```
 
