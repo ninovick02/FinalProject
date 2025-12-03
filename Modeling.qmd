@@ -28,7 +28,6 @@ df <- read_csv("data/diabetes_binary_health_indicators_BRFSS2015.csv")|>
     Income = fct_collapse(Income, "<$20,000" = c("<$10,000", "$10,000-$15,000", "$15,000-$20,000")))
 ```
 
-
 ```{r}
 set.seed(222)
 
@@ -42,8 +41,8 @@ test_data <- testing(data_split)
 cv_folds <- vfold_cv(train_data, 5)
 ```
 
-
 Making sure the test and train data have somewhat equal distributions
+
 ```{r}
 cross_tabs <- lapply(names(train_data |> select(-c(BMI, PhysHlth, MentHlth, Diabetes_binary))), function(x) xtabs(~ train_data[[x]] + train_data $Diabetes_binary))
 
@@ -99,11 +98,10 @@ test_data |> select(c(Diabetes_binary, MentHlth)) |>
 ```
 
 ## Fitting models
+
 ```{r}
 recipe <- recipe(Diabetes_binary ~ ., data = train_data)
 ```
-
-
 
 ```{r}
 tree_mod <- decision_tree(tree_depth = tune(), cost_complexity = tune(), min_n = tune()) |>
@@ -137,7 +135,6 @@ tree_final_fit <- tree_final_wf |>
   last_fit(data_split)
 ```
 
-
 ```{r}
 cores <- parallel::detectCores()
 rf_mod <- 
@@ -159,7 +156,6 @@ rf_fits <-
             metrics = metric_set(mn_log_loss))
 ```
 
-
 ```{r}
 rf_best_params <- select_best(rf_fits, metric = "mn_log_loss")
 rf_final_wf <- rf_wf |>
@@ -172,6 +168,5 @@ rf_final_fit <- rf_final_wf |>
 ```
 
 ```{r}
-print("this is so that I can run chunks above")
+print("this is so that I can run chunks above!!")
 ```
-
