@@ -4,4 +4,114 @@ format: html
 editor: visual
 ---
 
+```{r}
+library(tidymodels)
+library(tidyverse)
+```
+
+```{r}
+df <- read_csv("data/diabetes_binary_health_indicators_BRFSS2015.csv")|>
+  mutate(across(-c(BMI, GenHlth, MentHlth, PhysHlth, Sex, Age, Education, Income),
+                ~factor(.x, levels = c(0, 1), labels = c("No", "Yes")))) |>
+  mutate(GenHlth = ordered(GenHlth, levels = c(1, 2, 3, 4, 5), label=c("excellent", "very good", "good", "fair", "poor"))) |>
+  mutate(Sex = factor(Sex, levels = c(0, 1), labels = c("female", "male"))) |>
+  mutate(Age = ordered(Age,
+         levels = 1:13, 
+         labels = c("18-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "70-74", "75-79", "80 or older"))) |>
+  mutate(Education = ordered(Education, levels = 1:6,
+         labels = c("Never attended school or only kindergarten", "Elementary", "Some high school", "High school graduate", "Some college", "College graduate"))) |>
+  mutate(Income = ordered(Income, levels = 1:8, 
+         labels = c("<$10,000", "$10,000-$15,000", "$15,000-$20,000", "$20,000-$25,000", "$25,000-$35,000", "$35,000-$50,000", "$50,000-$75,000", ">$75,000")))|>
+  mutate(
+    Education = fct_collapse(Education,
+      "Up to some high school" = c("Never attended school or only kindergarten", "Elementary", "Some high school")),
+    Income = fct_collapse(Income, "<$20,000" = c("<$10,000", "$10,000-$15,000", "$15,000-$20,000")))
+```
+
+
+```{r}
+set.seed(222)
+
+data_split <- initial_split(df, prop = .7, strata = "Diabetes_binary")
+
+#Create data frames for the two sets
+train_data <- training(data_split)
+test_data <- testing(data_split)
+
+#Create cross validation folds
+cv_folds <- vfold_cv(train_data, 5)
+```
+
+
+Making sure the test and train data have somewhat equal distributions
+```{r}
+cross_tabs <- lapply(names(train_data |> select(-c(BMI, PhysHlth, MentHlth, Diabetes_binary))), function(x) xtabs(~ train_data[[x]] + train_data $Diabetes_binary))
+
+names(cross_tabs) <- names(train_data |> select(-c(BMI, PhysHlth, MentHlth, Diabetes_binary)))
+cross_tabs
+
+cross_tabs <- lapply(names(test_data |> select(-c(BMI, PhysHlth, MentHlth, Diabetes_binary))), function(x) xtabs(~ test_data[[x]] + test_data$Diabetes_binary))
+
+names(cross_tabs) <- names(test_data |> select(-c(BMI, PhysHlth, MentHlth, Diabetes_binary)))
+cross_tabs
+```
+
+```{r}
+train_data |> select(c(Diabetes_binary, PhysHlth)) |>
+  filter(PhysHlth > 0) |>
+  group_by(Diabetes_binary) |>
+  summarise(
+    across(
+      .cols = PhysHlth, 
+      .fns = list(
+        med  = median,                  
+        mean = mean)))
+
+test_data |> select(c(Diabetes_binary, PhysHlth)) |>
+  filter(PhysHlth > 0) |>
+  group_by(Diabetes_binary) |>
+  summarise(
+    across(
+      .cols = PhysHlth, 
+      .fns = list(
+        med  = median,                  
+        mean = mean)))
+
+train_data |> select(c(Diabetes_binary, MentHlth)) |>
+  filter(MentHlth > 0) |>
+  group_by(Diabetes_binary) |>
+  summarise(
+    across(
+      .cols = MentHlth, 
+      .fns = list(
+        med  = median,                  
+        mean = mean)))
+
+test_data |> select(c(Diabetes_binary, MentHlth)) |>
+  filter(MentHlth > 0) |>
+  group_by(Diabetes_binary) |>
+  summarise(
+    across(
+      .cols = MentHlth, 
+      .fns = list(
+        med  = median,                  
+        mean = mean)))
+```
+
+## Fitting models
+```{r}
+recipe <- recipe(Diabetes_binary ~ ., data = train_data)
+```
+
+
+
+```{r}
+tree_mod <- decision_tree(tree_depth = tune(), cost_complexity = tune(), min_n = tune()) |>
+  set_engine("rpart") |>
+  set_mode("classification")
+
+tree_wf <- workflow() |>
+  add_recipe(recipe) |>
+  add_model(tree_mod)
+```
 
