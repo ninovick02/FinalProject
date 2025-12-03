@@ -197,3 +197,6 @@ rf_final_fit %>%
   extract_fit_parsnip() %>% 
   vip(num_features = 22)
 ```
+
+Based on this importance graph, if there are future analyses with new data, I would update the fits by paring down the predictors. I would only include BMI, General Health, Age, HighBP, Physical Health, High Chol, Income, Mental Health, DiffWalk, Education, and HeartDiseaseAttak. This will reduce the model by half while not taking away much precision.
+
