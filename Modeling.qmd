@@ -106,12 +106,21 @@ recipe <- recipe(Diabetes_binary ~ ., data = train_data)
 
 
 ```{r}
-tree_mod <- decision_tree(tree_depth = tune(), cost_complexity = tune(), min_n = tune()) |>
+tree_mod <- decision_tree(tree_depth = tune(), cost_complexity = tune(), min_n = 200) |>
   set_engine("rpart") |>
   set_mode("classification")
 
 tree_wf <- workflow() |>
   add_recipe(recipe) |>
   add_model(tree_mod)
+```
+
+```{r}
+tree_grid <- grid_regular(cost_complexity(), tree_depth(), levels = c(5, 5))
+```
+
+```{r}
+tree_fits <- tree_wf |>
+  tune_grid(resamples = cv_folds, grid = tree_grid)
 ```
 
