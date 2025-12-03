@@ -146,7 +146,6 @@ final_tree_log_loss <- tree_final_fit |>
   )
 ```
 
-
 ```{r}
 cores <- parallel::detectCores()
 rf_mod <- 
@@ -198,4 +197,3 @@ rf_final_fit %>%
   extract_fit_parsnip() %>% 
   vip(num_features = 22)
 ```
-
