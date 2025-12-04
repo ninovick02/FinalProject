@@ -5,7 +5,7 @@ FROM rstudio/plumber
 RUN apt-get update -qq && apt-get install -y  libssl-dev  libcurl4-gnutls-dev  libpng-dev pandoc 
     
 # install plumber, tidymodels, tidyverse, ggplot2
-RUN R -e "install.packages(c('tidymodels', 'plumber', 'tidyvere', 'ggplot2'))"
+RUN R -e "install.packages(c('tidymodels', 'plumber', 'tidyverse', 'ggplot2'))"
 
 # copy myAPI.R from the current directory into the container
 COPY plumber.R plumber.R

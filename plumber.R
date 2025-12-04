@@ -127,11 +127,16 @@ function(
   return(Prediction)
 }
 
-# Examples:
+# Examples for LOCAL API run (docker id port is 8000):
 # http://127.0.0.1:48709/pred?BMI=16
 # http://127.0.0.1:48709/pred?BMI=35&GenHlth=fair&Age=60-64&HighBP=Yes&PhysHlth=10&HighChol=Yes&Income=%2425%2C000-%2435%2C000&MentHlth=0&Education=Some%20college&PhysActivity=No&Sex=female
 # http://127.0.0.1:48709/pred?Age=60-64&HighBP=No&PhysHlth=0&HighChol=Yes&MentHlth=0&Education=Some%20college&Fruits=Yes
 
+
+# Examples using Docker Image port:
+# http://127.0.0.1:8000/pred?BMI=16
+# http://127.0.0.1:8000/pred?BMI=35&GenHlth=fair&Age=60-64&HighBP=Yes&PhysHlth=10&HighChol=Yes&Income=%2425%2C000-%2435%2C000&MentHlth=0&Education=Some%20college&PhysActivity=No&Sex=female
+# http://127.0.0.1:8000/pred?Age=60-64&HighBP=No&PhysHlth=0&HighChol=Yes&MentHlth=0&Education=Some%20college&Fruits=Yes
 
 #* Info Endpoint
 #* @get /info
