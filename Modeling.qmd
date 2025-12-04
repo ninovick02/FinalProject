@@ -16,6 +16,7 @@ Libraries
 library(tidymodels)
 library(tidyverse)
 library(yardstick)
+library(vip)
 ```
 
 
@@ -147,7 +148,7 @@ tree_grid <- grid_regular(cost_complexity(), tree_depth(), min_n(), levels = c(5
 ```
 
 Fitting the model. Saving the predictions in order to find log loss metric
-```{r}
+```{r cache=TRUE}
 tree_fits <- tree_wf |>
   tune_grid(resamples = cv_folds, grid = tree_grid,
                           control = control_grid(save_pred = TRUE),
@@ -162,7 +163,7 @@ tree_final_wf <- tree_wf |>
 ```
 
 Creating the final fit based on all the data
-```{r}
+```{r cache=TRUE}
 tree_final_fit <- tree_final_wf |>
   last_fit(data_split)
 ```
@@ -205,7 +206,7 @@ rf_wf <- workflow() |>
 ```
 
 Fitting the data
-```{r}
+```{r cache=TRUE}
 rf_fits <- 
   rf_wf |>
   tune_grid(resample = cv_folds,
@@ -222,7 +223,7 @@ rf_final_wf <- rf_wf |>
 ```
 
 Fitting this workflow to all the data to see how well it does with new observations.
-```{r}
+```{r cache=TRUE}
 rf_final_fit <- rf_final_wf |>
   last_fit(data_split)
 ```
@@ -247,8 +248,8 @@ save(rf_final_fit, rf_final_wf, file="savedrf.RData")
 
 Finding variable importance
 ```{r}
-rf_final_fit %>% 
-  extract_fit_parsnip() %>% 
+rf_final_fit |> 
+  extract_fit_parsnip() |> 
   vip(num_features = 22)
 ```
 
