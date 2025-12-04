@@ -5,7 +5,6 @@ library(tidyverse)
 load("savedrf.RData")
 load("savedtree.RData")
 
-
 # Loading Data Set
 diabetes_data <- df <- read_csv("Data/diabetes_binary_health_indicators_BRFSS2015.csv")|>
   mutate(across(-c(BMI, GenHlth, MentHlth, PhysHlth, Sex, Age, Education, Income),
@@ -127,14 +126,24 @@ function(
 
 #* Info Endpoint
 #* @get /info
+function(){
+  list(
+    name = "Naomi Novick",
+    github_page = ""
+  )
+}
 
 
 
 #* Plot confusion Matrix
 #* @serializer png
-#* @get /plot
+#* @get /conf_mat
 function() {
-    rand <- rnorm(100)
-    hist(rand)
+  preds <- predict(final_tree_model, diabetes_data)
+  diabetes_data$pred <- preds$.pred_class
+  cm <- yardstick::conf_mat(data = diabetes_data, truth = Diabetes_binary, estimate = pred)
+  autoplot(cm, type="heatmap") +
+    labs(title = "Confusion Matrix of All Data Using Model") +
+    theme(plot.title = element_text(hjust = .5))
 }
 
