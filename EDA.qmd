@@ -49,7 +49,7 @@ library(janitor)
 Importing Data from Local Drive
 
 ```{r}
-df <- read_csv("data/diabetes_binary_health_indicators_BRFSS2015.csv")
+df <- read_csv("Data/diabetes_binary_health_indicators_BRFSS2015.csv")
 ```
 
 Checking missingness from dataset. There should not be any missing values according to the creator of this cleaned data.

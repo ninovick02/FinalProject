@@ -241,7 +241,7 @@ final_rf_log_loss <- rf_final_fit |>
 ## Compaing models
 
 Saving the final fits and workflows so that do not need to re-run either of these fits
-```{r}
+```{r cache=TRUE}
 save(tree_final_fit, tree_final_wf, file="savedtree.RData")
 save(rf_final_fit, rf_final_wf, file="savedrf.RData")
 ```
