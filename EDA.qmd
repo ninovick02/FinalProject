@@ -6,31 +6,60 @@ editor: visual
 
 ## Introduction
 
-Diabetes is a chronic disease affecting more than [10% of adults worldwide](https://ncdalliance.org/explore-ncds/ncds/diabetes?gad_source=1&gad_campaignid=17280909267&gbraid=0AAAAAoah2CWm1l8zrTC4K7w5H-ix2lvGe&gclid=Cj0KCQiAubrJBhCbARIsAHIdxD_rD15vBLNvnICmcPUJjveVxXD0WRGPyxEgODxFc3z4YYAT00jRoFUaAleZEALw_wcB).It is characterized by the body’s inability to produce or properly use insulin, a hormone that regulates blood sugar. Diabetes is a lifelong condition that often leaves a person reliant on external insulin sources or other glucose-lowering treatments, and it can predispose individuals to worse health outcomes. As with most chronic diseases, early diagnosis and prevention are vital to reducing health risks.
+Diabetes is a chronic disease affecting more than [10% of adults worldwide](https://ncdalliance.org/explore-ncds/ncds/diabetes?gad_source=1&gad_campaignid=17280909267&gbraid=0AAAAAoah2CWm1l8zrTC4K7w5H-ix2lvGe&gclid=Cj0KCQiAubrJBhCbARIsAHIdxD_rD15vBLNvnICmcPUJjveVxXD0WRGPyxEgODxFc3z4YYAT00jRoFUaAleZEALw_wcB). It is characterized by the body's inability to produce or properly use insulin, a hormone that regulates blood sugar. Diabetes is a lifelong condition that often leaves a person reliant on external insulin sources or other glucose-lowering treatments, and it can predispose individuals to worse health outcomes. As with most chronic diseases, early diagnosis and prevention are vital to reducing health risks.
 
-The [dataset](https://www.kaggle.com/datasets/alexteboul/diabetes-health-indicators-dataset/data) used here is a cleaned version of the CDC’s Behavioral Risk Factor Surveillance System (BRFSS) survey. As the name suggests, it collects information on health-related risk factors, such as age, prior health conditions, BMI, and behaviors like smoking and drinking, along with whether a respondent has diabetes or prediabetes. We can use this information to explore correlations between these factors and diabetes status and to build predictive models for identifying people at increased risk.
+The [dataset](https://www.kaggle.com/datasets/alexteboul/diabetes-health-indicators-dataset/data) used here is a cleaned version of the CDC's Behavioral Risk Factor Surveillance System (BRFSS) survey. As the name suggests, it collects information on health-related risk factors, such as age, prior health conditions, BMI, and behaviors like smoking and drinking, along with whether a respondent has diabetes or prediabetes. We can use this information to explore correlations between these factors and diabetes status and to build predictive models for identifying people at increased risk. This document will create a model to predict if a person ***currently*** has diabetes or prediabetes based on their ***current*** behavior.
 
-*Note: There are multiple types of diabetes, but the BRFSS data does not distinguish among them. The only form of diabetes that is preventable through behavioral or lifestyle changes is Type II diabetes. Prediabetes is also specifically associated with Type II diabetes. Therefore, this dataset is most relevant to studying Type II diabetes, which accounts for roughly 90% of all diabetes cases. Depending on what we observe in the EDA, we may choose to remove outliers who likely have another form of diabetes, since those cases would not be influenced by the behavioral risk factors included in this dataset.*
+*Note: There are multiple types of diabetes, but the BRFSS data does not distinguish among them. The only form of diabetes that is preventable through behavioral or lifestyle changes is Type II diabetes. Prediabetes is also specifically associated with Type II diabetes. Therefore, this dataset is most relevant to studying Type II diabetes, which accounts for roughly 90% of all diabetes cases.*
+
+The variables recorded in this dataset are:
+
+-   Diabetes_binary: Diabetes or prediabetes
+-   HighBP: High Blood Pressure
+-   HighChol: High Cholesterol
+-   CholCheck: Had a cholesterol check in the last 5 years
+-   BMI: Body mass index weight(kg) / height(m)\^2
+-   Smoker: Has smoked at least 100 cigarettes total
+-   Stroke: Has had a prior stroke
+-   HeartDiseaseorAttack: Has been diagnosed with heart disease or has had an attack
+-   PhysActivity: Has done physical activity in the past 30 days (not including work)
+-   Fruits: Consumes fruit at least once a day
+-   Veggies: Consumes vegetables at least once a day
+-   HvyAlcoholConsump: Heavy alcohol consumption (for adults men \>= 14, women \>= 7 drinks per week)
+-   AnyHealthcare: Any kind of heath care coverage
+-   NoDocbcCost: Needed to, but could not afford to see a doctor in the past 12 months
+-   GenHlth: 1-5 opinion scale on general health (1 = excellent)
+-   MentHlth: number of poor mental health days in past 30 days
+-   PhysHlth: number of physical illness or injury days in past 30 days
+-   DiffWalk: Has difficulty walking or climbing stairs
+-   Sex: Male or Female
+-   Age: 13 level age category of (approximately) 5 year gaps. Ages 18-80+
+-   Education: Highest education a person has received
+-   Income: Annual Income categories. Less than 10,000 to 75,000+
 
 ## Loading Data
 
 Libraries
+
 ```{r message=FALSE}
 library(tidyverse)
 library(janitor)
 ```
 
 Importing Data from Local Drive
+
 ```{r}
 df <- read_csv("data/diabetes_binary_health_indicators_BRFSS2015.csv")
 ```
+
 Checking missingness from dataset. There should not be any missing values according to the creator of this cleaned data.
+
 ```{r}
 colSums(is.na(df))
 ```
 
-Changing all categorical variables to factors. 
-*Slightly Salty note: Why is the Variable of "Age When Told Diabetic" excluded?*
+Changing all categorical variables to factors.
+
 ```{r}
 df <- df |>
   mutate(across(-c(BMI, GenHlth, MentHlth, PhysHlth, Sex, Age, Education, Income),
@@ -51,12 +80,18 @@ df <- df |>
 
 ### Single Variable
 
-One-way tables for categorical data. There are quite a few variables where a value has less than 5% of the data, but tree models are good at handling this, so we will not exclude these columns.
+One-way tables for categorical data. We are viewing the distribution of each of our variables.
+
 ```{r}
 lapply(names(df |> select(-c(BMI, PhysHlth, MentHlth))), function(x) tabyl(df, x))
 ```
 
-Looking at the data, the frequencies within education and income are too unbalanced. I am going to combine the lower categories to account for this
+Looking at these distributions, the frequencies within education and income are too unbalanced. It is possible that the training/test split might miss a category. I am going to combine the lower categories to account for this. There are quite a few variables other unbalanced variables, where less than 5% of observations have a value. However, we have so much data, that the splits for these should not be a problem and tree models are good at handling skewness.
+
+Additionally, there are a few variables (like alcohol consumption, or physical health) that are influenced by a person having diabetes. *(Alcohol has a lot of sugar, diabetes might make you ill)* In the scenario where we are using behaviors to predict the chance of developing diabetes, these variables might not be good to include in the model. However, we are trying to predict if the person already has diabetes based on their current habits. Therefore, all of the predictor variables will stay and the model decide which are important.
+
+Consolidating Education and Income
+
 ```{r}
 df <- df |>
   mutate(
@@ -65,14 +100,15 @@ df <- df |>
     Income = fct_collapse(Income, "<$20,000" = c("<$10,000", "$10,000-$15,000", "$15,000-$20,000")))
 ```
 
+Checking that the consolidation worked
 
 ```{r}
 tabyl(df, Education)
 tabyl(df, Income)
 ```
 
+Viewing the distribution of numeric data.
 
-Viewing the distribution of numerical data. 
 ```{r}
 par(mfrow=c(1, 3))
 hist(df$BMI)
@@ -80,13 +116,25 @@ hist(df$PhysHlth)
 hist(df$MentHlth)
 par(mfrow=c(1,1))
 ```
+
+All of these variables are skewed right. If we were not using tree models, I would consider taking the log to center the values. The physical and mental health variables contain a lot of zeros. We need to consider the distribution of the non-zero days by themselves
+
+```{r}
+par(mfrow=c(1, 2))
+hist(df$PhysHlth[df$PhysHlth > 0])
+hist(df$MentHlth[df$MentHlth > 0])
+par(mfrow=c(1, 1))
+```
+
 Numeric Data summaries
+
 ```{r}
 summary(df |> select(BMI, MentHlth, PhysHlth))
 ```
 
 ### Multi Variable
-#### By the Response Variable
+
+Now we are going to see how all of the variables are in relation to the response variable (whether or not a person has diabetes/prediabetes).
 
 ```{r}
 
@@ -110,6 +158,10 @@ for(i in 1:length(df)){
 gridExtra::grid.arrange(grobs = plot_list, nrows=6)
 ```
 
+These plots show us some variables of interest: Age, BMI, HighHP, HighChol, and GenHlth. These variables have a different distribution depending on the response variable, and will likely be important in any models. There are several variables where it appears as though there are not observations in the intersection of a value and diabetes. If this is the case, there is an argument for removing this as a predictor since it offers little information. Let us investigate this numerically.
+
+Numerically viewing intersection with Tables
+
 ```{r}
 cross_tabs <- lapply(names(df |> select(-c(BMI, PhysHlth, MentHlth, Diabetes_binary))), function(x) xtabs(~ df[[x]] + df$Diabetes_binary))
 
@@ -117,6 +169,9 @@ names(cross_tabs) <- names(df|> select(-c(BMI, PhysHlth, MentHlth, Diabetes_bina
 cross_tabs
 ```
 
+There are observations in each intersection, so we will keep the predictors
+
+Viewing the intersections with numerical summaries
 
 ```{r}
 df |> select(c(Diabetes_binary, BMI, PhysHlth, MentHlth)) |>
@@ -151,6 +206,8 @@ df |> select(c(Diabetes_binary, BMI, PhysHlth, MentHlth)) |>
   )
 ```
 
+Viewing the distribution of the mental and physical health variables without the zero values.
+
 ```{r}
 df |> select(c(Diabetes_binary, PhysHlth)) |>
   filter(PhysHlth > 0) |>
@@ -173,13 +230,8 @@ df |> select(c(Diabetes_binary, MentHlth)) |>
         mean = mean)))
 ```
 
+These means and medians seem significant. In the next page, we can see if they are still strong predictors even with the zero values added back in.
 
+Now that we have explored what the data looks like, we can begin to fit models. The next page will use this data to build a model that predicts if a person has diabetes/prediabetes based on their behavior.
 
-
-
-
-
-
-
-
-[Click here for the Modeling Page](Modeling.html)
+[Click here for the Modeling Page](https://ninovick02.github.io/FinalProject/Modeling.html)
