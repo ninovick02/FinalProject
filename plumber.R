@@ -1,5 +1,7 @@
 library(plumber)
+library(tidymodels)
 library(tidyverse)
+library(ggplot2)
 
 # Loading saved fits and workflows
 load("savedtree.RData")
@@ -34,10 +36,16 @@ defaults <- lapply(names(df), function(x){
     temp[which.max(tabulate(match(df[[x]], temp)))]
   }
 })
+
+defaults <- lapply(defaults, function(x) {
+  if(is.factor(x) || is.ordered(x)){ 
+    as.character(x)
+    } else x
+})
 names(defaults) = names(df)
 
 #* @apiTitle Diabetes Fits
-#* @apiDescription Plumber example description.
+#* @apiDescription Enter in Predictor values to return Model Prediction.
 
 #* Predict diabetes probability
 #* Parameters in order of Model Importance
@@ -88,40 +96,42 @@ function(
 ) {
   # In order of df
   newdata <- data.frame(
-    HighBP               = as.numeric(HighBP),
-    HighChol             = as.numeric(HighChol),
-    CholCheck            = as.numeric(CholCheck),
+    HighBP               = factor(HighBP, levels = c("No", "Yes")),
+    HighChol             = factor(HighChol, levels = c("No", "Yes")),
+    CholCheck            = factor(CholCheck, levels = c("No", "Yes")),
     BMI                  = as.numeric(BMI),
-    Smoker               = as.numeric(Smoker),
-    Stroke               = as.numeric(Stroke),
-    HeartDiseaseorAttack = as.numeric(HeartDiseaseorAttack),
-    PhysActivity         = as.numeric(PhysActivity),
-    Fruits               = as.numeric(Fruits),
-    Veggies              = as.numeric(Veggies),
-    HvyAlcoholConsump    = as.numeric(HvyAlcoholConsump),
-    AnyHealthcare        = as.numeric(AnyHealthcare),
-    NoDocbcCost          = as.numeric(NoDocbcCost),
-    GenHlth              = as.numeric(GenHlth),
+    Smoker               = factor(Smoker, levels = c("No", "Yes")),
+    Stroke               = factor(Stroke, levels = c("No", "Yes")),
+    HeartDiseaseorAttack = factor(HeartDiseaseorAttack, levels = c("No", "Yes")),
+    PhysActivity         = factor(PhysActivity, levels = c("No", "Yes")),
+    Fruits               = factor(Fruits, levels = c("No", "Yes")),
+    Veggies              = factor(Veggies, levels = c("No", "Yes")),
+    HvyAlcoholConsump    = factor(HvyAlcoholConsump, levels = c("No", "Yes")),
+    AnyHealthcare        = factor(AnyHealthcare, levels = c("No", "Yes")),
+    NoDocbcCost          = factor(NoDocbcCost, levels = c("No", "Yes")),
+    GenHlth              = ordered(GenHlth, levels = c("excellent", "very good", "good", "fair", "poor")),
     MentHlth             = as.numeric(MentHlth),
     PhysHlth             = as.numeric(PhysHlth),
-    DiffWalk             = as.numeric(DiffWalk),
-    Sex                  = as.numeric(Sex),
-    Age                  = as.numeric(Age),
-    Education            = as.numeric(Education),
-    Income               = as.numeric(Income)
+    DiffWalk             = factor(DiffWalk, levels = c("No", "Yes")),
+    Sex                  = factor(Sex, levels = c("female", "male")),
+    Age                  = ordered(Age,
+                                   levels = c("18-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "70-74", "75-79", "80 or older")),
+    Education             = ordered(Education,
+                                   levels = c("Up to some high school", "High school graduate", "Some college", "College graduate")),
+    Income               = ordered(Income,
+                                   levels = c("<$20,000", "$20,000-$25,000", "$25,000-$35,000", "$35,000-$50,000", "$50,000-$75,000", ">$75,000"))
   )
   
   # Return class and probabilities
-  list(
-    "Prediction" = predict(final_rf_model, newdata),
-    "Prob_of_Pred"  = predict(final_rf_model, newdata, type="prob")
-  )
+  Prediction <- predict(final_tree_model, newdata)
+  return(Prediction)
 }
 
 # Examples:
-# http://127.0.0.1:8000/pred?BMI=30&Age=50&Smoker=1
-# http://127.0.0.1:8000/pred?HighBP=1&HighChol=1&GenHlth=4
-# http://127.0.0.1:8000/pred
+# http://127.0.0.1:48709/pred?BMI=16
+# http://127.0.0.1:48709/pred?BMI=35&GenHlth=fair&Age=60-64&HighBP=Yes&PhysHlth=10&HighChol=Yes&Income=%2425%2C000-%2435%2C000&MentHlth=0&Education=Some%20college&PhysActivity=No&Sex=female
+# http://127.0.0.1:48709/pred?Age=60-64&HighBP=No&PhysHlth=0&HighChol=Yes&MentHlth=0&Education=Some%20college&Fruits=Yes
+
 
 #* Info Endpoint
 #* @get /info
@@ -139,8 +149,6 @@ function() {
   preds <- predict(final_tree_model, diabetes_data)
   diabetes_data$pred <- preds$.pred_class
   cm <- yardstick::conf_mat(data = diabetes_data, truth = Diabetes_binary, estimate = pred)
-  autoplot(cm, type="heatmap") +
-    labs(title = "Confusion Matrix of All Data Using Model") +
-    theme(plot.title = element_text(hjust = .5))
+  print(autoplot(cm, type = "heatmap"))
 }
 
