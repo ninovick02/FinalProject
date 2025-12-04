@@ -2,7 +2,6 @@ library(plumber)
 library(tidyverse)
 
 # Loading saved fits and workflows
-load("savedrf.RData")
 load("savedtree.RData")
 
 # Loading Data Set
@@ -129,11 +128,9 @@ function(
 function(){
   list(
     name = "Naomi Novick",
-    github_page = ""
+    github_page = "https://ninovick02.github.io/FinalProject/"
   )
 }
-
-
 
 #* Plot confusion Matrix
 #* @serializer png

@@ -3,12 +3,23 @@ title: "Modeling"
 format: html
 editor: visual
 ---
+## Introduction
 
+Diabetes is a chronic disease affecting more than [10% of adults worldwide](https://ncdalliance.org/explore-ncds/ncds/diabetes?gad_source=1&gad_campaignid=17280909267&gbraid=0AAAAAoah2CWm1l8zrTC4K7w5H-ix2lvGe&gclid=Cj0KCQiAubrJBhCbARIsAHIdxD_rD15vBLNvnICmcPUJjveVxXD0WRGPyxEgODxFc3z4YYAT00jRoFUaAleZEALw_wcB). It is characterized by the body's inability to produce or properly use insulin, a hormone that regulates blood sugar. Diabetes is a lifelong condition that often leaves a person reliant on external insulin sources or other glucose-lowering treatments, and it can predispose individuals to worse health outcomes. As with most chronic diseases, early diagnosis and prevention are vital to reducing health risks.
+
+The [dataset](https://www.kaggle.com/datasets/alexteboul/diabetes-health-indicators-dataset/data) used here is a cleaned version of the CDC's Behavioral Risk Factor Surveillance System (BRFSS) survey. As the name suggests, it collects information on health-related risk factors, such as age, prior health conditions, BMI, and behaviors like smoking and drinking, along with whether a respondent has diabetes or prediabetes. This document will create a model to predict if a person currently has diabetes or prediabetes based on their current behavior.
+
+## Loading Data
+
+Libraries
 ```{r}
 library(tidymodels)
 library(tidyverse)
+library(yardstick)
 ```
 
+
+Loading data and doing same manipulations as in the EDA file. We are changing categorical variables to factors and giving the factors meaningful names. We are also consolidating the Education and Income variables to make them more balanced
 ```{r}
 df <- read_csv("Data/diabetes_binary_health_indicators_BRFSS2015.csv")|>
   mutate(across(-c(BMI, GenHlth, MentHlth, PhysHlth, Sex, Age, Education, Income),
@@ -28,6 +39,9 @@ df <- read_csv("Data/diabetes_binary_health_indicators_BRFSS2015.csv")|>
     Income = fct_collapse(Income, "<$20,000" = c("<$10,000", "$10,000-$15,000", "$15,000-$20,000")))
 ```
 
+## Creating Splits
+
+Using tidymodels framework to split data into test and training sets. We are stratifying based on the response variable, Diabetes_binary. Then, we are further splitting the data so that we can cross-validate it later. The seed is set for reproducibility
 ```{r}
 set.seed(222)
 
@@ -41,8 +55,7 @@ test_data <- testing(data_split)
 cv_folds <- vfold_cv(train_data, 5)
 ```
 
-Making sure the test and train data have somewhat equal distributions
-
+Making sure the test and train data have somewhat equal distributions. We are paying special attention to the highly unbalanced variables like CholCheck and Smoking.
 ```{r}
 cross_tabs <- lapply(names(train_data |> select(-c(BMI, PhysHlth, MentHlth, Diabetes_binary))), function(x) xtabs(~ train_data[[x]] + train_data $Diabetes_binary))
 
@@ -54,7 +67,6 @@ cross_tabs <- lapply(names(test_data |> select(-c(BMI, PhysHlth, MentHlth, Diabe
 names(cross_tabs) <- names(test_data |> select(-c(BMI, PhysHlth, MentHlth, Diabetes_binary)))
 cross_tabs
 ```
-
 ```{r}
 train_data |> select(c(Diabetes_binary, PhysHlth)) |>
   filter(PhysHlth > 0) |>
@@ -97,12 +109,28 @@ test_data |> select(c(Diabetes_binary, MentHlth)) |>
         mean = mean)))
 ```
 
+These distributions are okay, so we will proceed with this seed.
+
 ## Fitting models
 
+Creating basic recipe with all variables as predictors. No need to create dummy variables or normalize since we will be using tree models. There also is not a need to create new or combine variables.
 ```{r}
 recipe <- recipe(Diabetes_binary ~ ., data = train_data)
 ```
 
+
+### Classification Trees
+
+#### Explaination
+A classification tree is a type of decision tree used for predicting categorical outcomes. It works by examining all the predictor variables and determining the best split for each variable at each stage. The algorithm then selects the split that optimally separates the data. This process continues recursively, creating branches until a stopping condition is met. In our model, we are tuning several hyperparameters: **tree_depth**, which controls the maximum number of branches; **cost_complexity**, which penalizes overly complex trees to prevent overfitting; and **min_n**, which sets the minimum number of observations required for a split.
+
+Classification trees have several advantages. They handle non-linear relationships and categorical predictors effectively because they make decisions based on splits in the data rather than assuming a specific mathematical relationship between the predictors and the response.
+
+However, classification trees are considered fragile models because the choice of the best split can be heavily influenced by individual observations. We mitigate this vulnerability using **cross-validation**, which builds trees on different subsets of the training data to evaluate stability and performance. Another limitation is that trees can be highly correlated: if a particular variable strongly influences the outcome, many trees may produce the same split, leading to similar predictions across models.
+
+#### The model
+
+Creating model and workflow
 ```{r}
 tree_mod <- decision_tree(tree_depth = tune(), cost_complexity = tune(), min_n = tune()) |>
   set_engine("rpart") |>
@@ -113,10 +141,12 @@ tree_wf <- workflow() |>
   add_model(tree_mod)
 ```
 
+Creating tuning grid. The 5 levels for each hyperparameter gives a good balance between exploring the hyperparameter space and keeping computational time reasonable.
 ```{r}
 tree_grid <- grid_regular(cost_complexity(), tree_depth(), min_n(), levels = c(5, 5, 5))
 ```
 
+Fitting the model. Saving the predictions in order to find log loss metric
 ```{r}
 tree_fits <- tree_wf |>
   tune_grid(resamples = cv_folds, grid = tree_grid,
@@ -124,33 +154,49 @@ tree_fits <- tree_wf |>
                           metrics = metric_set(mn_log_loss))
 ```
 
+Selected the best fit based on the mean log loss and finalizing worflow
 ```{r}
 tree_best_params <- select_best(tree_fits, metric = "mn_log_loss")
 tree_final_wf <- tree_wf |>
   finalize_workflow(tree_best_params)
 ```
 
+Creating the final fit based on all the data
 ```{r}
 tree_final_fit <- tree_final_wf |>
   last_fit(data_split)
 ```
 
+Manually calculating the mean log loss
 ```{r}
-# Calculate mn_log_loss manually
-library(yardstick)
 final_tree_log_loss <- tree_final_fit |>
   collect_predictions() |>
   mn_log_loss(
     truth = Diabetes_binary,
-    .pred_Yes # Explicitly list the columns
+    .pred_Yes
   )
 ```
 
+### Random Forest
+
+#### Explaination
+
+A random forest is an ensemble method that builds many classification trees and combines their predictions to produce a more stable and accurate model. It addresses the fragility of individual trees in two ways:
+
+- Bagging: Each tree is trained on a different random sample of the data, drawn with replacement, which reduces the influence of any single observation on the overall model.
+
+- Random selection of predictors: Each tree is built on a random subset of predictors. This reduces correlation between trees and ensures that no single strong predictor dominates the model.
+
+By aggregating the predictions of many trees, a random forest is less sensitive to noise in the data and more robust than a single classification tree. Additionally, it provides a measure of variable importance, showing which predictors contribute most to the model’s accuracy.
+
+#### The model
+
+Creating model and workflow. Tuning on the minimum number of observations in a branch and the number of predictors that are sampled. Setting the number of trees the forest produces to 500. The importance of the predictors is being tracked. While it is not as important for this model fit, we can apply the results of predictor importance to future models.
 ```{r}
 cores <- parallel::detectCores()
 rf_mod <- 
-  rand_forest(mtry = tune(), min_n = tune(), trees = 500) %>% 
-  set_engine("ranger", num.threads = cores, importance = "impurity") %>% 
+  rand_forest(mtry = tune(), min_n = tune(), trees = 500) |>
+  set_engine("ranger", num.threads = cores, importance = "impurity") |> 
   set_mode("classification")
 
 rf_wf <- workflow() |>
@@ -158,6 +204,7 @@ rf_wf <- workflow() |>
   add_model(rf_mod)
 ```
 
+Fitting the data
 ```{r}
 rf_fits <- 
   rf_wf |>
@@ -167,31 +214,38 @@ rf_fits <-
             metrics = metric_set(mn_log_loss))
 ```
 
+Choosing the model with the lowest mean log loss and finalizing workflow
 ```{r}
 rf_best_params <- select_best(rf_fits, metric = "mn_log_loss")
 rf_final_wf <- rf_wf |>
   finalize_workflow(rf_best_params)
 ```
 
+Fitting this workflow to all the data to see how well it does with new observations.
 ```{r}
 rf_final_fit <- rf_final_wf |>
   last_fit(data_split)
 ```
 
+Calculating mean log loss
 ```{r}
 final_rf_log_loss <- rf_final_fit |>
   collect_predictions() |>
   mn_log_loss(
     truth = Diabetes_binary,
-    .pred_Yes # Explicitly list the columns
+    .pred_Yes
   )
 ```
 
+## Compaing models
+
+Saving the final fits and workflows so that do not need to re-run either of these fits
 ```{r}
 save(tree_final_fit, tree_final_wf, file="savedtree.RData")
 save(rf_final_fit, rf_final_wf, file="savedrf.RData")
 ```
 
+Finding variable importance
 ```{r}
 rf_final_fit %>% 
   extract_fit_parsnip() %>% 
@@ -200,3 +254,9 @@ rf_final_fit %>%
 
 Based on this importance graph, if there are future analyses with new data, I would update the fits by paring down the predictors. I would only include BMI, General Health, Age, HighBP, Physical Health, High Chol, Income, Mental Health, DiffWalk, Education, and HeartDiseaseAttak. This will reduce the model by half while not taking away much precision.
 
+Comparing the mean log loss for the models
+```{r}
+final_tree_log_loss
+final_rf_log_loss
+```
+The mean log loss is lower for the tree model, so we will use this going forward.
