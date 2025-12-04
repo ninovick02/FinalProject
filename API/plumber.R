@@ -41,14 +41,96 @@ names(defaults) = names(df)
 #* @apiTitle Diabetes Fits
 #* @apiDescription Plumber example description.
 
-#* Echo back the input
-#* @param msg The message to echo
-#* @get /echo
-function(msg = "") {
-    list(msg = paste0("The message is: '", msg, "'"))
+#* Predict diabetes probability
+#* Parameters in order of Model Importance
+#* @param BMI Body Mass Index
+#* @param GenHlth General Health (excellent, very good, good, fair, poor)
+#* @param Age Age in 5 year intervals (18-24, 25-29, 30-24, ..., 75-79, 80 or older)
+#* @param HighBP High Blood Pressure (Yes, No)
+#* @param PhysHlth Number of physical illness or injury days in the past 30 days (1-30)
+#* @param HighChol High cholesterol (Yes, No)
+#* @param Income Annual Income (<$20,000, $20,000-$25,000, $25,000-$35,000, $35,000-$50,000, $50,000-$75,000, >$75,000)
+#* @param MentHlth Number of poor mental health days in the past 30 days (1-30)
+#* @param DiffWalk Difficulty walking or climbing stairs (Yes, No)
+#* @param Education Highest education level (Up to some high school, High school graduate, Some college, College graduate)
+#* @param HeartDiseaseorAttack Prior coronary heart disease or myocardial infarction (Yes, No)
+#* @param PhysActivity Physical activity in the past 30 days (Yes, No)
+#* @param Sex Sex (female, male)
+#* @param Fruits Consume fruit 1 or more times per day (Yes, No)
+#* @param Veggies Consume vegetables 1 or more times per day (Yes, No)
+#* @param Smoker Smoked at least 100 cigarettes (Yes, No)
+#* @param Stroke Prior Stroke (Yes, No)
+#* @param NoDocbcCost Could not see doctor in the last 12 months due to cost (Yes, No)
+#* @param HvyAlcoholConsump Heavy Alcohol Consumption (Yes, No) *men > 13 per week, women > 6 per week
+#* @param AnyHealthcare Health Care (Yes, No)
+#* @param CholCheck Cholesterol checked in the last 5 years (Yes, No)
+#* @get /pred
+function(
+    BMI                  = defaults$BMI,
+    GenHlth              = defaults$GenHlth,
+    Age                  = defaults$Age,
+    HighBP               = defaults$HighBP,
+    PhysHlth             = defaults$PhysHlth,
+    HighChol             = defaults$HighChol,
+    Income               = defaults$Income, 
+    MentHlth             = defaults$MentHlth,
+    DiffWalk             = defaults$DiffWalk,
+    Education            = defaults$Education,
+    HeartDiseaseorAttack = defaults$HeartDiseaseorAttack,
+    PhysActivity         = defaults$PhysActivity,
+    Sex                  = defaults$Sex,
+    Fruits               = defaults$Fruits,
+    Smoker               = defaults$Smoker,
+    Veggies              = defaults$Veggies,
+    Stroke               = defaults$Stroke,
+    NoDocbcCost          = defaults$NoDocbcCost,
+    HvyAlcoholConsump    = defaults$HvyAlcoholConsump,
+    AnyHealthcare        = defaults$AnyHealthcare,
+    CholCheck            = defaults$CholCheck
+) {
+  # In order of df
+  newdata <- data.frame(
+    HighBP               = as.numeric(HighBP),
+    HighChol             = as.numeric(HighChol),
+    CholCheck            = as.numeric(CholCheck),
+    BMI                  = as.numeric(BMI),
+    Smoker               = as.numeric(Smoker),
+    Stroke               = as.numeric(Stroke),
+    HeartDiseaseorAttack = as.numeric(HeartDiseaseorAttack),
+    PhysActivity         = as.numeric(PhysActivity),
+    Fruits               = as.numeric(Fruits),
+    Veggies              = as.numeric(Veggies),
+    HvyAlcoholConsump    = as.numeric(HvyAlcoholConsump),
+    AnyHealthcare        = as.numeric(AnyHealthcare),
+    NoDocbcCost          = as.numeric(NoDocbcCost),
+    GenHlth              = as.numeric(GenHlth),
+    MentHlth             = as.numeric(MentHlth),
+    PhysHlth             = as.numeric(PhysHlth),
+    DiffWalk             = as.numeric(DiffWalk),
+    Sex                  = as.numeric(Sex),
+    Age                  = as.numeric(Age),
+    Education            = as.numeric(Education),
+    Income               = as.numeric(Income)
+  )
+  
+  # Return class and probabilities
+  list(
+    "Prediction" = predict(final_rf_model, newdata),
+    "Prob_of_Pred"  = predict(final_rf_model, newdata, type="prob")
+  )
 }
 
-#* Plot a histogram
+# Examples:
+# http://127.0.0.1:8000/pred?BMI=30&Age=50&Smoker=1
+# http://127.0.0.1:8000/pred?HighBP=1&HighChol=1&GenHlth=4
+# http://127.0.0.1:8000/pred
+
+#* Info Endpoint
+#* @get /info
+
+
+
+#* Plot confusion Matrix
 #* @serializer png
 #* @get /plot
 function() {
@@ -56,18 +138,3 @@ function() {
     hist(rand)
 }
 
-#* Return the sum of two numbers
-#* @param a The first number to add
-#* @param b The second number to add
-#* @post /sum
-function(a, b) {
-    as.numeric(a) + as.numeric(b)
-}
-
-# Programmatically alter your API
-#* @plumber
-function(pr) {
-    pr %>%
-        # Overwrite the default serializer to return unboxed JSON
-        pr_set_serializer(serializer_unboxed_json())
-}
